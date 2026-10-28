@@ -13,7 +13,7 @@ export default function RegisterPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
+  
   const handleRegister = async (e: FormEvent) => {
     e.preventDefault();
 
@@ -21,16 +21,22 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+      if (!API_URL) {
+        throw new Error("Backend API URL is not configured.");
+      }
+
       const response = await fetch(
-        "http://localhost:5000/api/auth/register",
+        `${API_URL.replace(/\/+$/, "")}/api/auth/register`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            name,
-            email,
+            name: name.trim(),
+            email: email.trim(),
             password,
           }),
         }
@@ -55,6 +61,8 @@ export default function RegisterPage() {
       setLoading(false);
     }
   };
+
+
 
   return (
     <main className="smartcrm-register-page">
