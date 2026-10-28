@@ -8,8 +8,4 @@ const pool = new Pool({
   },
 });
 
-pool.on("error", (err) => {
-  console.error("Unexpected database error:", err);
-});
-
 module.exports = pool;
