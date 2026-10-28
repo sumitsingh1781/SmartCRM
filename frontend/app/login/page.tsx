@@ -1,3 +1,4 @@
+
 "use client";
 
 import { FormEvent, useState } from "react";
@@ -9,7 +10,6 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -20,8 +20,14 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+      if (!API_URL) {
+        throw new Error("Backend API URL is not configured");
+      }
+
       const response = await fetch(
-        "http://localhost:5000/api/auth/login",
+        `${API_URL.replace(/\/+$/, "")}/api/auth/login`,
         {
           method: "POST",
           headers: {
@@ -42,11 +48,12 @@ export default function LoginPage() {
         );
       }
 
+      if (!data.token) {
+        throw new Error("Login response did not include a token");
+      }
+
       localStorage.setItem("token", data.token);
-      localStorage.setItem(
-        "user",
-        JSON.stringify(data.user)
-      );
+      localStorage.setItem("user", JSON.stringify(data.user ?? null));
 
       router.push("/");
     } catch (err) {
@@ -62,46 +69,28 @@ export default function LoginPage() {
 
   return (
     <main className="smartcrm-login-page">
-
-      {/* =========================================
-          BACKGROUND DECORATION
-      ========================================== */}
-
+      {/* BACKGROUND DECORATION */}
       <div className="smartcrm-login-bg">
-
         <div className="smartcrm-bg-grid" />
-
         <div className="smartcrm-bg-circle circle-one" />
         <div className="smartcrm-bg-circle circle-two" />
         <div className="smartcrm-bg-circle circle-three" />
-
         <div className="smartcrm-bg-line line-one" />
         <div className="smartcrm-bg-line line-two" />
-
       </div>
 
-      {/* =========================================
-          LEFT BRANDING
-      ========================================== */}
-
+      {/* LEFT BRANDING */}
       <section className="smartcrm-login-brand">
-
         <div className="smartcrm-brand-content">
-
-          {/* LOGO */}
           <div className="nexora-logo">
-
             <div className="nexora-logo-shape">
               <span />
               <span />
               <span />
             </div>
-
           </div>
 
-          <div className="nexora-brand-name">
-            NEXORA
-          </div>
+          <div className="nexora-brand-name">NEXORA</div>
 
           <div className="nexora-brand-subtitle">
             CUSTOMER RELATIONSHIP PLATFORM
@@ -120,228 +109,142 @@ export default function LoginPage() {
           </p>
 
           {/* FEATURE CARDS */}
-
           <div className="smartcrm-login-features">
-
             <div className="smartcrm-login-feature">
-
-              <div className="feature-icon">
-                ◈
-              </div>
-
+              <div className="feature-icon">◈</div>
               <div>
-                <strong>
-                  Customer Management
-                </strong>
-
+                <strong>Customer Management</strong>
                 <small>
                   Everything about your customers in one place.
                 </small>
               </div>
-
             </div>
 
             <div className="smartcrm-login-feature">
-
-              <div className="feature-icon">
-                ↗
-              </div>
-
+              <div className="feature-icon">↗</div>
               <div>
-                <strong>
-                  Sales Pipeline
-                </strong>
-
+                <strong>Sales Pipeline</strong>
                 <small>
                   Track opportunities from lead to deal.
                 </small>
               </div>
-
             </div>
 
             <div className="smartcrm-login-feature">
-
-              <div className="feature-icon">
-                ✦
-              </div>
-
+              <div className="feature-icon">✦</div>
               <div>
-                <strong>
-                  Smart Insights
-                </strong>
-
+                <strong>Smart Insights</strong>
                 <small>
                   Turn business activity into useful insights.
                 </small>
               </div>
-
             </div>
-
           </div>
-
         </div>
 
         <div className="smartcrm-login-footer">
           © 2026 Nexora Technologies
         </div>
-
       </section>
 
-      {/* =========================================
-          LOGIN CARD
-      ========================================== */}
-
+      {/* LOGIN CARD */}
       <section className="smartcrm-login-form-section">
-
         <div className="smartcrm-login-card">
-
           {/* MOBILE LOGO */}
-
           <div className="mobile-nexora-logo">
-
             <div className="nexora-logo-shape">
               <span />
               <span />
               <span />
             </div>
-
           </div>
 
           <div className="login-heading">
-
-            <span className="login-eyebrow">
-              WELCOME BACK
-            </span>
-
-            <h1>
-              Sign in to your account
-            </h1>
-
+            <span className="login-eyebrow">WELCOME BACK</span>
+            <h1>Sign in to your account</h1>
             <p>
               Enter your credentials to access your
               workspace.
             </p>
-
           </div>
 
           {/* ERROR */}
-
           {error && (
-            <div className="login-error">
-
-              <div className="error-symbol">
-                !
-              </div>
-
+            <div className="login-error" role="alert">
+              <div className="error-symbol">!</div>
               <div>
-                <strong>
-                  Unable to sign in
-                </strong>
-
-                <p>
-                  {error}
-                </p>
+                <strong>Unable to sign in</strong>
+                <p>{error}</p>
               </div>
-
             </div>
           )}
 
           {/* FORM */}
-
           <form
             onSubmit={handleLogin}
             className="nexora-login-form"
           >
-
             {/* EMAIL */}
-
             <div className="login-field">
-
-              <label htmlFor="email">
-                Email address
-              </label>
+              <label htmlFor="email">Email address</label>
 
               <div className="login-input-wrapper">
-
-                <span className="login-input-icon">
-                  @
-                </span>
+                <span className="login-input-icon">@</span>
 
                 <input
                   id="email"
+                  name="email"
                   type="email"
                   placeholder="name@company.com"
+                  autoComplete="email"
                   value={email}
-                  onChange={(e) =>
-                    setEmail(e.target.value)
-                  }
+                  onChange={(e) => setEmail(e.target.value)}
                   required
                 />
-
               </div>
-
             </div>
 
             {/* PASSWORD */}
-
             <div className="login-field">
-
               <div className="password-label-row">
+                <label htmlFor="password">Password</label>
 
-                <label htmlFor="password">
-                  Password
-                </label>
-
-                <button
-                  type="button"
+                <Link
+                  href="/forgot-password"
                   className="forgot-password"
                 >
                   Forgot password?
-                </button>
-
+                </Link>
               </div>
 
               <div className="login-input-wrapper">
-
-                <span className="login-input-icon">
-                  •
-                </span>
+                <span className="login-input-icon">•</span>
 
                 <input
                   id="password"
+                  name="password"
                   type="password"
                   placeholder="Enter your password"
+                  autoComplete="current-password"
                   value={password}
-                  onChange={(e) =>
-                    setPassword(e.target.value)
-                  }
+                  onChange={(e) => setPassword(e.target.value)}
                   required
                 />
-
               </div>
-
             </div>
 
             {/* REMEMBER */}
-
             <label className="remember-me">
-
-              <input type="checkbox" />
-
-              <span>
-                Keep me signed in
-              </span>
-
+              <input type="checkbox" name="remember" />
+              <span>Keep me signed in</span>
             </label>
 
             {/* LOGIN BUTTON */}
-
             <button
               type="submit"
               className="nexora-login-button"
               disabled={loading}
             >
-
               {loading ? (
                 <>
                   <span className="login-spinner" />
@@ -350,18 +253,13 @@ export default function LoginPage() {
               ) : (
                 <>
                   Sign in
-                  <span className="login-arrow">
-                    →
-                  </span>
+                  <span className="login-arrow">→</span>
                 </>
               )}
-
             </button>
-
           </form>
 
           {/* DIVIDER */}
-
           <div className="login-divider">
             <span />
             <p>SECURE ACCESS</p>
@@ -369,17 +267,9 @@ export default function LoginPage() {
           </div>
 
           {/* REGISTER */}
-
           <div className="create-account">
-
-            <span>
-              Don&apos;t have an account?
-            </span>
-
-            <Link href="/register">
-              Create account
-            </Link>
-
+            <span>Don&apos;t have an account?</span>
+            <Link href="/register">Create account</Link>
           </div>
 
           <div className="security-note">
@@ -388,19 +278,11 @@ export default function LoginPage() {
               Your connection and credentials are protected.
             </span>
           </div>
-
         </div>
-
       </section>
 
-      {/* =========================================
-          PAGE CSS
-      ========================================== */}
-
+      {/* PAGE CSS */}
       <style jsx>{`
-
-        /* PAGE */
-
         .smartcrm-login-page {
           min-height: 100vh;
           width: 100%;
@@ -410,8 +292,6 @@ export default function LoginPage() {
           background: #f7f9fc;
           font-family: Arial, Helvetica, sans-serif;
         }
-
-        /* BACKGROUND */
 
         .smartcrm-login-bg {
           position: absolute;
@@ -424,7 +304,6 @@ export default function LoginPage() {
           position: absolute;
           inset: 0;
           opacity: 0.28;
-
           background-image:
             linear-gradient(
               rgba(37, 99, 235, 0.05) 1px,
@@ -435,7 +314,6 @@ export default function LoginPage() {
               rgba(37, 99, 235, 0.05) 1px,
               transparent 1px
             );
-
           background-size: 42px 42px;
         }
 
@@ -494,7 +372,6 @@ export default function LoginPage() {
         }
 
         /* LEFT SIDE */
-
         .smartcrm-login-brand {
           width: 52%;
           min-height: 100vh;
@@ -505,7 +382,6 @@ export default function LoginPage() {
           justify-content: space-between;
           padding: 64px 8%;
           color: white;
-
           background:
             radial-gradient(
               circle at 15% 15%,
@@ -525,16 +401,13 @@ export default function LoginPage() {
           position: absolute;
           inset: 0;
           opacity: 0.08;
-
-          background-image:
-            linear-gradient(
-              135deg,
-              transparent 40%,
-              white 40%,
-              white 41%,
-              transparent 41%
-            );
-
+          background-image: linear-gradient(
+            135deg,
+            transparent 40%,
+            white 40%,
+            white 41%,
+            transparent 41%
+          );
           background-size: 70px 70px;
           pointer-events: none;
         }
@@ -546,8 +419,7 @@ export default function LoginPage() {
           margin: auto 0;
         }
 
-        /* NEXORA LOGO */
-
+        /* LOGO */
         .nexora-logo {
           width: 58px;
           height: 58px;
@@ -556,15 +428,8 @@ export default function LoginPage() {
           align-items: center;
           justify-content: center;
           margin-bottom: 22px;
-
-          background: linear-gradient(
-            145deg,
-            #3b82f6,
-            #2563eb
-          );
-
-          box-shadow:
-            0 14px 35px rgba(37, 99, 235, 0.35);
+          background: linear-gradient(145deg, #3b82f6, #2563eb);
+          box-shadow: 0 14px 35px rgba(37, 99, 235, 0.35);
         }
 
         .nexora-logo-shape {
@@ -639,7 +504,6 @@ export default function LoginPage() {
         }
 
         /* FEATURES */
-
         .smartcrm-login-features {
           margin-top: 42px;
           display: flex;
@@ -661,8 +525,8 @@ export default function LoginPage() {
           align-items: center;
           justify-content: center;
           border-radius: 10px;
-          background: rgba(255,255,255,0.08);
-          border: 1px solid rgba(255,255,255,0.09);
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.09);
           color: #60a5fa;
         }
 
@@ -684,8 +548,7 @@ export default function LoginPage() {
           font-size: 11px;
         }
 
-        /* RIGHT */
-
+        /* RIGHT SIDE */
         .smartcrm-login-form-section {
           width: 48%;
           min-height: 100vh;
@@ -701,12 +564,10 @@ export default function LoginPage() {
           width: 100%;
           max-width: 455px;
           padding: 44px;
-          background: rgba(255,255,255,0.94);
+          background: rgba(255, 255, 255, 0.94);
           border: 1px solid #e5e7eb;
           border-radius: 24px;
-
-          box-shadow:
-            0 25px 70px rgba(15, 23, 42, 0.09);
+          box-shadow: 0 25px 70px rgba(15, 23, 42, 0.09);
         }
 
         .mobile-nexora-logo {
@@ -714,7 +575,6 @@ export default function LoginPage() {
         }
 
         /* HEADING */
-
         .login-eyebrow {
           display: inline-block;
           margin-bottom: 12px;
@@ -740,7 +600,6 @@ export default function LoginPage() {
         }
 
         /* ERROR */
-
         .login-error {
           display: flex;
           gap: 12px;
@@ -774,10 +633,10 @@ export default function LoginPage() {
           margin: 3px 0 0;
           color: #b91c1c;
           font-size: 11px;
+          overflow-wrap: anywhere;
         }
 
         /* FORM */
-
         .nexora-login-form {
           margin-top: 30px;
         }
@@ -812,6 +671,7 @@ export default function LoginPage() {
           color: #2563eb;
           font-size: 11px;
           cursor: pointer;
+          text-decoration: none;
         }
 
         .forgot-password:hover {
@@ -842,8 +702,7 @@ export default function LoginPage() {
 
         .login-input-wrapper input:focus {
           border-color: #3b82f6;
-          box-shadow:
-            0 0 0 3px rgba(59,130,246,0.1);
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
 
         .login-input-icon {
@@ -857,7 +716,6 @@ export default function LoginPage() {
         }
 
         /* REMEMBER */
-
         .remember-me {
           display: flex;
           align-items: center;
@@ -875,34 +733,27 @@ export default function LoginPage() {
         }
 
         /* BUTTON */
-
         .nexora-login-button {
           width: 100%;
-          height: 51px;
+          min-height: 51px;
           border: 0;
           border-radius: 11px;
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 12px;
-          background: linear-gradient(
-            135deg,
-            #2563eb,
-            #1d4ed8
-          );
+          background: linear-gradient(135deg, #2563eb, #1d4ed8);
           color: white;
           font-size: 13px;
           font-weight: 700;
           cursor: pointer;
-          box-shadow:
-            0 10px 25px rgba(37,99,235,0.22);
+          box-shadow: 0 10px 25px rgba(37, 99, 235, 0.22);
           transition: 0.2s;
         }
 
         .nexora-login-button:hover:not(:disabled) {
           transform: translateY(-1px);
-          box-shadow:
-            0 14px 30px rgba(37,99,235,0.28);
+          box-shadow: 0 14px 30px rgba(37, 99, 235, 0.28);
         }
 
         .nexora-login-button:disabled {
@@ -917,7 +768,7 @@ export default function LoginPage() {
         .login-spinner {
           width: 15px;
           height: 15px;
-          border: 2px solid rgba(255,255,255,0.4);
+          border: 2px solid rgba(255, 255, 255, 0.4);
           border-top-color: white;
           border-radius: 50%;
           animation: spin 0.7s linear infinite;
@@ -930,7 +781,6 @@ export default function LoginPage() {
         }
 
         /* DIVIDER */
-
         .login-divider {
           display: flex;
           align-items: center;
@@ -953,7 +803,6 @@ export default function LoginPage() {
         }
 
         /* REGISTER */
-
         .create-account {
           text-align: center;
           font-size: 12px;
@@ -981,12 +830,11 @@ export default function LoginPage() {
           gap: 7px;
           color: #9ca3af;
           font-size: 10px;
+          text-align: center;
         }
 
         /* RESPONSIVE */
-
         @media (max-width: 1050px) {
-
           .smartcrm-login-brand {
             width: 48%;
             padding: 50px;
@@ -1001,10 +849,12 @@ export default function LoginPage() {
             font-size: 43px;
           }
 
+          .smartcrm-login-card {
+            padding: 32px;
+          }
         }
 
         @media (max-width: 800px) {
-
           .smartcrm-login-page {
             display: block;
             min-height: 100vh;
@@ -1014,6 +864,7 @@ export default function LoginPage() {
             width: 100%;
             min-height: 260px;
             padding: 35px 25px;
+            box-sizing: border-box;
           }
 
           .smartcrm-brand-heading {
@@ -1031,17 +882,16 @@ export default function LoginPage() {
             width: 100%;
             min-height: auto;
             padding: 30px 18px 50px;
+            box-sizing: border-box;
           }
 
           .smartcrm-login-card {
             max-width: 500px;
             padding: 30px 25px;
           }
-
         }
 
         @media (max-width: 480px) {
-
           .smartcrm-login-brand {
             min-height: 210px;
           }
@@ -1059,10 +909,11 @@ export default function LoginPage() {
             font-size: 25px;
           }
 
+          .password-label-row {
+            gap: 10px;
+          }
         }
-
       `}</style>
-
     </main>
   );
 }
