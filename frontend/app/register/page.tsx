@@ -1,3 +1,4 @@
+
 "use client";
 
 import { FormEvent, useState } from "react";
@@ -10,13 +11,11 @@ export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  
-  const handleRegister = async (e: FormEvent) => {
-    e.preventDefault();
 
+  const handleRegister = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     setError("");
     setLoading(true);
 
@@ -24,7 +23,9 @@ export default function RegisterPage() {
       const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
       if (!API_URL) {
-        throw new Error("Backend API URL is not configured.");
+        throw new Error(
+          "Backend URL is missing. Please check deployment settings."
+        );
       }
 
       const response = await fetch(
@@ -42,11 +43,20 @@ export default function RegisterPage() {
         }
       );
 
-      const data = await response.json();
+      const responseText = await response.text();
+      let data: { message?: string; error?: string } = {};
+
+      try {
+        data = responseText ? JSON.parse(responseText) : {};
+      } catch {
+        // Handle responses that are not JSON.
+      }
 
       if (!response.ok) {
         throw new Error(
-          data.message || "Registration failed"
+          data.message ||
+            data.error ||
+            `Registration failed (HTTP ${response.status}). Check the backend logs.`
         );
       }
 
@@ -55,51 +65,32 @@ export default function RegisterPage() {
       setError(
         err instanceof Error
           ? err.message
-          : "Something went wrong"
+          : "Something went wrong. Please try again."
       );
     } finally {
       setLoading(false);
     }
   };
 
-
-
   return (
     <main className="smartcrm-register-page">
-
-      {/* BACKGROUND */}
-
       <div className="smartcrm-register-bg">
-
         <div className="register-grid" />
-
         <div className="register-orb orb-one" />
         <div className="register-orb orb-two" />
-
       </div>
 
-      {/* LEFT BRAND PANEL */}
-
       <section className="smartcrm-register-brand">
-
         <div className="register-brand-content">
-
-          {/* LOGO */}
-
           <div className="register-logo">
-
             <div className="register-logo-shape">
               <span />
               <span />
               <span />
             </div>
-
           </div>
 
-          <div className="register-brand-name">
-            NEXORA
-          </div>
-
+          <div className="register-brand-name">NEXORA</div>
           <div className="register-brand-subtitle">
             CUSTOMER RELATIONSHIP PLATFORM
           </div>
@@ -111,218 +102,120 @@ export default function RegisterPage() {
           </h1>
 
           <p>
-            Create your workspace and bring customers,
-            leads, deals and tasks together in one
-            organized platform.
+            Create your workspace and bring customers, leads,
+            deals and tasks together in one organized platform.
           </p>
 
-          {/* BENEFITS */}
-
           <div className="register-benefits">
-
             <div className="register-benefit">
               <div>01</div>
-              <span>
-                Organize your customer data
-              </span>
+              <span>Organize your customer data</span>
             </div>
-
             <div className="register-benefit">
               <div>02</div>
-              <span>
-                Track your sales pipeline
-              </span>
+              <span>Track your sales pipeline</span>
             </div>
-
             <div className="register-benefit">
               <div>03</div>
-              <span>
-                Manage your daily tasks
-              </span>
+              <span>Manage your daily tasks</span>
             </div>
-
           </div>
-
         </div>
 
         <div className="register-brand-footer">
           © 2026 Nexora Technologies
         </div>
-
       </section>
 
-      {/* REGISTER FORM */}
-
       <section className="smartcrm-register-form-section">
-
         <div className="smartcrm-register-card">
-
           <div className="register-heading">
-
-            <span>
-              GET STARTED
-            </span>
-
-            <h2>
-              Create your account
-            </h2>
-
+            <span>GET STARTED</span>
+            <h2>Create your account</h2>
             <p>
-              Set up your SmartCRM workspace in a few
-              simple steps.
+              Set up your SmartCRM workspace in a few simple steps.
             </p>
-
           </div>
 
-          {/* ERROR */}
-
           {error && (
-            <div className="register-error">
-
-              <div className="register-error-icon">
-                !
-              </div>
-
+            <div className="register-error" role="alert">
+              <div className="register-error-icon">!</div>
               <div>
-                <strong>
-                  Registration failed
-                </strong>
-
-                <p>
-                  {error}
-                </p>
+                <strong>Registration failed</strong>
+                <p>{error}</p>
               </div>
-
             </div>
           )}
 
-          <form
-            onSubmit={handleRegister}
-            className="register-form"
-          >
-
-            {/* NAME */}
-
+          <form onSubmit={handleRegister} className="register-form">
             <div className="register-field">
-
-              <label htmlFor="name">
-                Full name
-              </label>
-
+              <label htmlFor="name">Full name</label>
               <div className="register-input-wrapper">
-
-                <span>
-                  ◎
-                </span>
-
+                <span aria-hidden="true">◎</span>
                 <input
                   id="name"
+                  name="name"
                   type="text"
                   placeholder="Enter your full name"
+                  autoComplete="name"
                   value={name}
-                  onChange={(e) =>
-                    setName(e.target.value)
-                  }
+                  onChange={(e) => setName(e.target.value)}
                   required
                 />
-
               </div>
-
             </div>
 
-            {/* EMAIL */}
-
             <div className="register-field">
-
-              <label htmlFor="email">
-                Email address
-              </label>
-
+              <label htmlFor="email">Email address</label>
               <div className="register-input-wrapper">
-
-                <span>
-                  @
-                </span>
-
+                <span aria-hidden="true">@</span>
                 <input
                   id="email"
+                  name="email"
                   type="email"
                   placeholder="name@company.com"
+                  autoComplete="email"
                   value={email}
-                  onChange={(e) =>
-                    setEmail(e.target.value)
-                  }
+                  onChange={(e) => setEmail(e.target.value)}
                   required
                 />
-
               </div>
-
             </div>
 
-            {/* PASSWORD */}
-
             <div className="register-field">
-
-              <label htmlFor="password">
-                Password
-              </label>
-
+              <label htmlFor="password">Password</label>
               <div className="register-input-wrapper">
-
-                <span>
-                  •
-                </span>
-
+                <span aria-hidden="true">•</span>
                 <input
                   id="password"
+                  name="password"
                   type="password"
                   placeholder="Create a secure password"
+                  autoComplete="new-password"
                   value={password}
-                  onChange={(e) =>
-                    setPassword(e.target.value)
-                  }
+                  onChange={(e) => setPassword(e.target.value)}
                   minLength={6}
                   required
                 />
-
               </div>
-
               <div className="password-hint">
                 Use at least 6 characters.
               </div>
-
             </div>
 
-            {/* TERMS */}
-
             <label className="register-terms">
-
-              <input
-                type="checkbox"
-                required
-              />
-
+              <input type="checkbox" required />
               <span>
-                I agree to the{" "}
-                <strong>
-                  Terms of Service
-                </strong>{" "}
-                and{" "}
-                <strong>
-                  Privacy Policy
-                </strong>
+                I agree to the <strong>Terms of Service</strong> and{" "}
+                <strong>Privacy Policy</strong>
               </span>
-
             </label>
-
-            {/* BUTTON */}
 
             <button
               type="submit"
               className="register-button"
               disabled={loading}
             >
-
               {loading ? (
                 <>
                   <span className="register-spinner" />
@@ -330,46 +223,29 @@ export default function RegisterPage() {
                 </>
               ) : (
                 <>
-                  Create account
-                  <span>→</span>
+                  Create account <span>→</span>
                 </>
               )}
-
             </button>
-
           </form>
-
-          {/* DIVIDER */}
 
           <div className="register-divider">
             <span />
-            <small>
-              ALREADY HAVE AN ACCOUNT?
-            </small>
+            <small>ALREADY HAVE AN ACCOUNT?</small>
             <span />
           </div>
 
           <div className="register-login-link">
-
-            <Link href="/login">
-              ← Back to sign in
-            </Link>
-
+            <Link href="/login">← Back to sign in</Link>
           </div>
 
           <div className="register-security">
-            🔒 Your account information is securely
-            transmitted.
+            🔒 Your account information is securely transmitted.
           </div>
-
         </div>
-
       </section>
 
-      {/* PAGE CSS */}
-
       <style jsx>{`
-
         .smartcrm-register-page {
           min-height: 100vh;
           width: 100%;
@@ -379,8 +255,6 @@ export default function RegisterPage() {
           background: #f7f9fc;
           font-family: Arial, Helvetica, sans-serif;
         }
-
-        /* BACKGROUND */
 
         .smartcrm-register-bg {
           position: absolute;
@@ -392,18 +266,9 @@ export default function RegisterPage() {
           position: absolute;
           inset: 0;
           opacity: 0.3;
-
           background-image:
-            linear-gradient(
-              rgba(37, 99, 235, 0.045) 1px,
-              transparent 1px
-            ),
-            linear-gradient(
-              90deg,
-              rgba(37, 99, 235, 0.045) 1px,
-              transparent 1px
-            );
-
+            linear-gradient(rgba(37, 99, 235, 0.045) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(37, 99, 235, 0.045) 1px, transparent 1px);
           background-size: 45px 45px;
         }
 
@@ -429,34 +294,20 @@ export default function RegisterPage() {
           background: rgba(99, 102, 241, 0.07);
         }
 
-        /* BRAND */
-
         .smartcrm-register-brand {
           width: 52%;
           min-height: 100vh;
+          box-sizing: border-box;
           position: relative;
           z-index: 2;
-
           display: flex;
           flex-direction: column;
           justify-content: space-between;
-
           padding: 64px 8%;
-
           color: white;
-
           background:
-            radial-gradient(
-              circle at 80% 20%,
-              rgba(37,99,235,0.3),
-              transparent 28%
-            ),
-            linear-gradient(
-              145deg,
-              #071426,
-              #0d1b32 55%,
-              #111c35
-            );
+            radial-gradient(circle at 80% 20%, rgba(37, 99, 235, 0.3), transparent 28%),
+            linear-gradient(145deg, #071426, #0d1b32 55%, #111c35);
         }
 
         .register-brand-content {
@@ -464,26 +315,15 @@ export default function RegisterPage() {
           margin: auto 0;
         }
 
-        /* LOGO */
-
         .register-logo {
           width: 58px;
           height: 58px;
           border-radius: 17px;
-
           display: flex;
           align-items: center;
           justify-content: center;
-
-          background: linear-gradient(
-            145deg,
-            #3b82f6,
-            #2563eb
-          );
-
-          box-shadow:
-            0 15px 35px rgba(37,99,235,0.35);
-
+          background: linear-gradient(145deg, #3b82f6, #2563eb);
+          box-shadow: 0 15px 35px rgba(37, 99, 235, 0.35);
           margin-bottom: 20px;
         }
 
@@ -541,7 +381,6 @@ export default function RegisterPage() {
         .register-brand-content h1 {
           margin-top: 65px;
           margin-bottom: 22px;
-
           font-size: clamp(38px, 4vw, 57px);
           line-height: 1.08;
           letter-spacing: -2px;
@@ -557,8 +396,6 @@ export default function RegisterPage() {
           font-size: 15px;
           line-height: 1.8;
         }
-
-        /* BENEFITS */
 
         .register-benefits {
           margin-top: 40px;
@@ -578,17 +415,14 @@ export default function RegisterPage() {
         .register-benefit div {
           width: 36px;
           height: 36px;
-
+          flex-shrink: 0;
           display: flex;
           align-items: center;
           justify-content: center;
-
-          border: 1px solid rgba(96,165,250,0.25);
+          border: 1px solid rgba(96, 165, 250, 0.25);
           border-radius: 9px;
-
           color: #60a5fa;
-          background: rgba(255,255,255,0.04);
-
+          background: rgba(255, 255, 255, 0.04);
           font-size: 10px;
           font-weight: 800;
         }
@@ -598,45 +432,33 @@ export default function RegisterPage() {
           font-size: 11px;
         }
 
-        /* FORM SIDE */
-
         .smartcrm-register-form-section {
           width: 48%;
           min-height: 100vh;
-
+          box-sizing: border-box;
           position: relative;
           z-index: 3;
-
           display: flex;
           align-items: center;
           justify-content: center;
-
           padding: 45px;
         }
 
         .smartcrm-register-card {
           width: 100%;
           max-width: 455px;
-
+          box-sizing: border-box;
           padding: 42px;
-
-          background: rgba(255,255,255,0.95);
-
+          background: rgba(255, 255, 255, 0.95);
           border: 1px solid #e5e7eb;
           border-radius: 24px;
-
-          box-shadow:
-            0 25px 70px rgba(15,23,42,0.09);
+          box-shadow: 0 25px 70px rgba(15, 23, 42, 0.09);
         }
-
-        /* HEADING */
 
         .register-heading > span {
           display: inline-block;
           margin-bottom: 11px;
-
           color: #2563eb;
-
           font-size: 10px;
           font-weight: 800;
           letter-spacing: 2px;
@@ -644,9 +466,7 @@ export default function RegisterPage() {
 
         .register-heading h2 {
           margin: 0;
-
           color: #111827;
-
           font-size: 30px;
           line-height: 1.2;
           letter-spacing: -0.8px;
@@ -654,42 +474,32 @@ export default function RegisterPage() {
 
         .register-heading p {
           margin-top: 10px;
-
           color: #6b7280;
-
           font-size: 13px;
           line-height: 1.6;
         }
 
-        /* ERROR */
-
         .register-error {
           display: flex;
           gap: 12px;
-
           margin-top: 22px;
           padding: 13px;
-
           border: 1px solid #fecaca;
           border-radius: 12px;
-
           background: #fef2f2;
+          overflow-wrap: anywhere;
         }
 
         .register-error-icon {
           width: 25px;
           height: 25px;
           flex-shrink: 0;
-
           display: flex;
           align-items: center;
           justify-content: center;
-
           border-radius: 50%;
-
           background: #dc2626;
           color: white;
-
           font-size: 12px;
           font-weight: 800;
         }
@@ -701,12 +511,10 @@ export default function RegisterPage() {
 
         .register-error p {
           margin: 3px 0 0;
-
           color: #b91c1c;
           font-size: 11px;
+          line-height: 1.5;
         }
-
-        /* FORM */
 
         .register-form {
           margin-top: 27px;
@@ -719,9 +527,7 @@ export default function RegisterPage() {
         .register-field label {
           display: block;
           margin-bottom: 8px;
-
           color: #374151;
-
           font-size: 12px;
           font-weight: 700;
         }
@@ -730,39 +536,28 @@ export default function RegisterPage() {
           position: relative;
         }
 
-        .register-input-wrapper span {
+        .register-input-wrapper > span {
           position: absolute;
-
           left: 15px;
           top: 50%;
-
           transform: translateY(-50%);
-
           color: #94a3b8;
           font-size: 15px;
-
           z-index: 2;
         }
 
         .register-input-wrapper input {
           width: 100%;
           height: 49px;
-
           box-sizing: border-box;
-
           padding: 0 15px 0 43px;
-
           border: 1px solid #dbe1ea;
           border-radius: 11px;
-
           outline: none;
-
           background: white;
           color: #111827;
-
           font-size: 13px;
-
-          transition: 0.2s;
+          transition: border-color 0.2s, box-shadow 0.2s;
         }
 
         .register-input-wrapper input::placeholder {
@@ -771,40 +566,31 @@ export default function RegisterPage() {
 
         .register-input-wrapper input:focus {
           border-color: #3b82f6;
-
-          box-shadow:
-            0 0 0 3px rgba(59,130,246,0.1);
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
 
         .password-hint {
           margin-top: 6px;
-
           color: #9ca3af;
           font-size: 10px;
         }
-
-        /* TERMS */
 
         .register-terms {
           display: flex;
           align-items: flex-start;
           gap: 9px;
-
           margin: 5px 0 22px;
-
           color: #6b7280;
-
           font-size: 10px;
           line-height: 1.6;
-
           cursor: pointer;
         }
 
         .register-terms input {
           width: 14px;
           height: 14px;
+          flex-shrink: 0;
           margin-top: 1px;
-
           accent-color: #2563eb;
         }
 
@@ -812,45 +598,27 @@ export default function RegisterPage() {
           color: #374151;
         }
 
-        /* BUTTON */
-
         .register-button {
           width: 100%;
-          height: 51px;
-
+          min-height: 51px;
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 12px;
-
           border: 0;
           border-radius: 11px;
-
-          background:
-            linear-gradient(
-              135deg,
-              #2563eb,
-              #1d4ed8
-            );
-
+          background: linear-gradient(135deg, #2563eb, #1d4ed8);
           color: white;
-
           font-size: 13px;
           font-weight: 700;
-
           cursor: pointer;
-
-          box-shadow:
-            0 10px 25px rgba(37,99,235,0.22);
-
-          transition: 0.2s;
+          box-shadow: 0 10px 25px rgba(37, 99, 235, 0.22);
+          transition: transform 0.2s, box-shadow 0.2s;
         }
 
         .register-button:hover:not(:disabled) {
           transform: translateY(-1px);
-
-          box-shadow:
-            0 14px 30px rgba(37,99,235,0.28);
+          box-shadow: 0 14px 30px rgba(37, 99, 235, 0.28);
         }
 
         .register-button:disabled {
@@ -865,12 +633,9 @@ export default function RegisterPage() {
         .register-spinner {
           width: 15px;
           height: 15px;
-
-          border: 2px solid rgba(255,255,255,0.4);
+          border: 2px solid rgba(255, 255, 255, 0.4);
           border-top-color: white;
-
           border-radius: 50%;
-
           animation: registerSpin 0.7s linear infinite;
         }
 
@@ -880,13 +645,10 @@ export default function RegisterPage() {
           }
         }
 
-        /* DIVIDER */
-
         .register-divider {
           display: flex;
           align-items: center;
           gap: 10px;
-
           margin: 28px 0 18px;
         }
 
@@ -898,13 +660,11 @@ export default function RegisterPage() {
 
         .register-divider small {
           color: #9ca3af;
-
           font-size: 8px;
           font-weight: 800;
           letter-spacing: 1.3px;
+          text-align: center;
         }
-
-        /* LOGIN */
 
         .register-login-link {
           text-align: center;
@@ -912,10 +672,8 @@ export default function RegisterPage() {
 
         .register-login-link a {
           color: #2563eb;
-
           font-size: 12px;
           font-weight: 700;
-
           text-decoration: none;
         }
 
@@ -926,19 +684,14 @@ export default function RegisterPage() {
         .register-security {
           margin-top: 21px;
           padding-top: 17px;
-
           border-top: 1px solid #f0f1f3;
-
           text-align: center;
-
           color: #9ca3af;
           font-size: 10px;
+          line-height: 1.6;
         }
 
-        /* RESPONSIVE */
-
         @media (max-width: 1050px) {
-
           .smartcrm-register-brand {
             width: 48%;
             padding: 50px;
@@ -953,10 +706,12 @@ export default function RegisterPage() {
             font-size: 42px;
           }
 
+          .smartcrm-register-card {
+            padding: 32px;
+          }
         }
 
         @media (max-width: 800px) {
-
           .smartcrm-register-page {
             display: block;
           }
@@ -988,11 +743,9 @@ export default function RegisterPage() {
             max-width: 500px;
             padding: 30px 25px;
           }
-
         }
 
         @media (max-width: 480px) {
-
           .smartcrm-register-card {
             padding: 25px 20px;
             border-radius: 18px;
@@ -1002,10 +755,11 @@ export default function RegisterPage() {
             font-size: 25px;
           }
 
+          .register-brand-subtitle {
+            letter-spacing: 2px;
+          }
         }
-
       `}</style>
-
     </main>
   );
 }
