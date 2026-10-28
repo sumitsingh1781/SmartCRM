@@ -5,9 +5,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 type RecordItem = Record<string, unknown>;
 
-const API = "http://localhost:5000/api";
+const API_BASE =
+  "https://smartcrm-backend-cm0u.onrender.com/api";
 
-function getArray(data: unknown, keys: string[] = []): RecordItem[] {
+function getArray(
+  data: unknown,
+  keys: string[] = []
+): RecordItem[] {
   if (Array.isArray(data)) return data as RecordItem[];
 
   if (data && typeof data === "object") {
@@ -19,20 +23,32 @@ function getArray(data: unknown, keys: string[] = []): RecordItem[] {
       }
     }
 
-    if (Array.isArray(obj.data)) return obj.data as RecordItem[];
+    if (Array.isArray(obj.data)) {
+      return obj.data as RecordItem[];
+    }
   }
 
   return [];
 }
 
-function getText(value: unknown, fallback = "Unknown"): string {
-  if (value === null || value === undefined || value === "") return fallback;
+function getText(
+  value: unknown,
+  fallback = "Unknown"
+): string {
+  if (value === null || value === undefined || value === "") {
+    return fallback;
+  }
+
   return String(value);
 }
 
 function getAmount(item: RecordItem): number {
   const value = Number(
-    item.amount ?? item.value ?? item.revenue ?? item.deal_value ?? 0
+    item.amount ??
+      item.value ??
+      item.revenue ??
+      item.deal_value ??
+      0
   );
 
   return Number.isFinite(value) ? value : 0;
@@ -47,10 +63,29 @@ function formatCurrency(value: number): string {
 }
 
 function normalizeStatus(value: unknown): string {
-  return getText(value, "Unknown").trim().toUpperCase().replaceAll("_", " ");
+  return getText(value)
+    .trim()
+    .toUpperCase()
+    .replaceAll("_", " ");
 }
 
-function downloadCSV(filename: string, rows: Record<string, unknown>[]) {
+function getDate(item: RecordItem): Date | null {
+  const value =
+    item.created_at ??
+    item.createdAt ??
+    item.date;
+
+  if (!value) return null;
+
+  const date = new Date(String(value));
+
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function downloadCSV(
+  filename: string,
+  rows: Record<string, unknown>[]
+) {
   if (!rows.length) {
     alert("Export karne ke liye data available nahi hai.");
     return;
@@ -79,16 +114,33 @@ function downloadCSV(filename: string, rows: Record<string, unknown>[]) {
 
   link.href = url;
   link.download = filename;
+  document.body.appendChild(link);
   link.click();
+  link.remove();
 
   URL.revokeObjectURL(url);
 }
+
+const WON_STATUSES = [
+  "WON",
+  "CLOSED WON",
+  "COMPLETED",
+  "SUCCESS",
+];
+
+const LOST_STATUSES = [
+  "LOST",
+  "CLOSED LOST",
+  "CANCELLED",
+  "CANCELED",
+];
 
 export default function ReportsPage() {
   const [customers, setCustomers] = useState<RecordItem[]>([]);
   const [leads, setLeads] = useState<RecordItem[]>([]);
   const [deals, setDeals] = useState<RecordItem[]>([]);
   const [tasks, setTasks] = useState<RecordItem[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [period, setPeriod] = useState("all");
@@ -99,21 +151,49 @@ export default function ReportsPage() {
 
     try {
       const endpoints = [
-        `${API}/customers`,
-        `${API}/leads`,
-        `${API}/deals`,
-        `${API}/tasks`,
+        { key: "customers", url: `${API_BASE}/customers` },
+        { key: "leads", url: `${API_BASE}/leads` },
+        { key: "deals", url: `${API_BASE}/deals` },
+        { key: "tasks", url: `${API_BASE}/tasks` },
       ];
 
       const responses = await Promise.all(
-        endpoints.map(async (url) => {
-          const response = await fetch(url, { cache: "no-store" });
+        endpoints.map(async ({ key, url }) => {
+          let response: Response;
 
-          if (!response.ok) {
-            throw new Error(`API request failed (${response.status})`);
+          try {
+            response = await fetch(url, {
+              cache: "no-store",
+            });
+          } catch (cause) {
+            console.error(`Network error for ${key}:`, cause);
+
+            throw new Error(
+              `${key} API tak connection nahi ho paya. URL: ${url}. Network ya CORS check karo.`
+            );
           }
 
-          return response.json();
+          if (!response.ok) {
+            const details = await response.text().catch(() => "");
+
+            console.error(`${key} API error:`, {
+              status: response.status,
+              url,
+              details,
+            });
+
+            throw new Error(
+              `${key} API failed: HTTP ${response.status}. ${details.slice(0, 180)}`
+            );
+          }
+
+          try {
+            return await response.json();
+          } catch {
+            throw new Error(
+              `${key} API ne valid JSON response nahi diya.`
+            );
+          }
         })
       );
 
@@ -121,10 +201,13 @@ export default function ReportsPage() {
       setLeads(getArray(responses[1], ["leads"]));
       setDeals(getArray(responses[2], ["deals"]));
       setTasks(getArray(responses[3], ["tasks"]));
-    } catch (err) {
-      console.error("Reports loading error:", err);
+    } catch (cause) {
+      console.error("Reports loading error:", cause);
+
       setError(
-        "Reports ka data load nahi ho paaya. Backend check karke Refresh dabao."
+        cause instanceof Error
+          ? cause.message
+          : "Reports ka data load nahi ho paaya."
       );
     } finally {
       setLoading(false);
@@ -142,14 +225,12 @@ export default function ReportsPage() {
 
     const days = Number(period);
     const cutoff = new Date();
+
     cutoff.setDate(cutoff.getDate() - days);
 
     const isRecent = (item: RecordItem) => {
-      const date = item.created_at ?? item.createdAt ?? item.date;
-      if (!date) return false;
-
-      const parsed = new Date(String(date));
-      return !Number.isNaN(parsed.getTime()) && parsed >= cutoff;
+      const date = getDate(item);
+      return date !== null && date >= cutoff;
     };
 
     return {
@@ -161,32 +242,26 @@ export default function ReportsPage() {
   }, [customers, leads, deals, tasks, period]);
 
   const wonDeals = filtered.deals.filter((deal) =>
-    ["WON", "CLOSED WON", "COMPLETED", "SUCCESS"].includes(
-      normalizeStatus(deal.status)
-    )
+    WON_STATUSES.includes(normalizeStatus(deal.status))
   );
 
   const lostDeals = filtered.deals.filter((deal) =>
-    ["LOST", "CLOSED LOST", "CANCELLED", "CANCELED"].includes(
-      normalizeStatus(deal.status)
-    )
+    LOST_STATUSES.includes(normalizeStatus(deal.status))
   );
 
-  const pipelineDeals = filtered.deals.filter(
-    (deal) =>
-      ![
-        "WON",
-        "CLOSED WON",
-        "COMPLETED",
-        "SUCCESS",
-        "LOST",
-        "CLOSED LOST",
-        "CANCELLED",
-        "CANCELED",
-      ].includes(normalizeStatus(deal.status))
-  );
+  const pipelineDeals = filtered.deals.filter((deal) => {
+    const status = normalizeStatus(deal.status);
 
-  const revenue = wonDeals.reduce((sum, deal) => sum + getAmount(deal), 0);
+    return (
+      !WON_STATUSES.includes(status) &&
+      !LOST_STATUSES.includes(status)
+    );
+  });
+
+  const revenue = wonDeals.reduce(
+    (sum, deal) => sum + getAmount(deal),
+    0
+  );
 
   const leadStatusCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -196,7 +271,9 @@ export default function ReportsPage() {
       counts[status] = (counts[status] || 0) + 1;
     });
 
-    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    return Object.entries(counts).sort(
+      (a, b) => b[1] - a[1]
+    );
   }, [filtered.leads]);
 
   const dealStatusCounts = useMemo(() => {
@@ -207,11 +284,15 @@ export default function ReportsPage() {
       counts[status] = (counts[status] || 0) + 1;
     });
 
-    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    return Object.entries(counts).sort(
+      (a, b) => b[1] - a[1]
+    );
   }, [filtered.deals]);
 
   const completedTasks = filtered.tasks.filter((task) =>
-    ["COMPLETED", "DONE", "CLOSED"].includes(normalizeStatus(task.status))
+    ["COMPLETED", "DONE", "CLOSED"].includes(
+      normalizeStatus(task.status)
+    )
   ).length;
 
   const conversionRate = filtered.leads.length
@@ -220,12 +301,8 @@ export default function ReportsPage() {
 
   const recentDeals = [...filtered.deals]
     .sort((a, b) => {
-      const dateA = new Date(
-        String(a.created_at ?? a.createdAt ?? 0)
-      ).getTime();
-      const dateB = new Date(
-        String(b.created_at ?? b.createdAt ?? 0)
-      ).getTime();
+      const dateA = getDate(a)?.getTime() ?? 0;
+      const dateB = getDate(b)?.getTime() ?? 0;
 
       return dateB - dateA;
     })
@@ -238,28 +315,40 @@ export default function ReportsPage() {
         Name: getText(item.name ?? item.company),
         Status: getText(item.status),
         Amount: "",
-        Created: getText(item.created_at ?? item.createdAt, ""),
+        Created: getText(
+          item.created_at ?? item.createdAt,
+          ""
+        ),
       })),
       ...filtered.leads.map((item) => ({
         Type: "Lead",
         Name: getText(item.name ?? item.company),
         Status: getText(item.status),
         Amount: "",
-        Created: getText(item.created_at ?? item.createdAt, ""),
+        Created: getText(
+          item.created_at ?? item.createdAt,
+          ""
+        ),
       })),
       ...filtered.deals.map((item) => ({
         Type: "Deal",
         Name: getText(item.title ?? item.name),
         Status: getText(item.status),
         Amount: getAmount(item),
-        Created: getText(item.created_at ?? item.createdAt, ""),
+        Created: getText(
+          item.created_at ?? item.createdAt,
+          ""
+        ),
       })),
       ...filtered.tasks.map((item) => ({
         Type: "Task",
         Name: getText(item.title ?? item.description),
         Status: getText(item.status),
         Amount: "",
-        Created: getText(item.created_at ?? item.createdAt, ""),
+        Created: getText(
+          item.created_at ?? item.createdAt,
+          ""
+        ),
       })),
     ];
 
@@ -325,8 +414,7 @@ export default function ReportsPage() {
           flex-wrap: wrap;
         }
 
-        button,
-        select {
+        button, select {
           font: inherit;
           font-size: 13px;
           border-radius: 10px;
@@ -369,7 +457,7 @@ export default function ReportsPage() {
           box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
         }
 
-        .stat-top {
+        .stat-top, .panel-heading {
           display: flex;
           justify-content: space-between;
           align-items: center;
@@ -414,10 +502,6 @@ export default function ReportsPage() {
         }
 
         .panel-heading {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 14px;
           margin-bottom: 22px;
         }
 
@@ -587,6 +671,7 @@ export default function ReportsPage() {
           padding: 13px 16px;
           font-size: 13px;
           margin-bottom: 20px;
+          overflow-wrap: anywhere;
         }
 
         .footer-note {
@@ -625,11 +710,7 @@ export default function ReportsPage() {
         }
 
         @media (max-width: 420px) {
-          .stats {
-            grid-template-columns: 1fr;
-          }
-
-          .pipeline-summary {
+          .stats, .pipeline-summary {
             grid-template-columns: 1fr;
           }
         }
@@ -637,11 +718,11 @@ export default function ReportsPage() {
 
       <header className="topbar">
         <div>
-          <div className="eyebrow">Analytics & Insights</div>
+          <div className="eyebrow">Analytics &amp; Insights</div>
           <h1>Reports Overview</h1>
           <p className="subtitle">
-            Understand your business performance, sales pipeline and team
-            activity.
+            Understand your business performance, sales pipeline
+            and team activity.
           </p>
         </div>
 
@@ -657,7 +738,10 @@ export default function ReportsPage() {
             <option value="90">Last 90 days</option>
           </select>
 
-          <button onClick={() => void loadReports()} disabled={loading}>
+          <button
+            onClick={() => void loadReports()}
+            disabled={loading}
+          >
             {loading ? "Refreshing..." : "↻ Refresh"}
           </button>
 
@@ -667,7 +751,11 @@ export default function ReportsPage() {
         </div>
       </header>
 
-      {error && <div className="notice">{error}</div>}
+      {error && (
+        <div className="notice" role="alert">
+          Reports error: {error}
+        </div>
+      )}
 
       <section className="stats">
         <article className="panel">
@@ -726,13 +814,17 @@ export default function ReportsPage() {
                 See how your leads are progressing
               </p>
             </div>
-            <span className="count-pill">{filtered.leads.length} leads</span>
+            <span className="count-pill">
+              {filtered.leads.length} leads
+            </span>
           </div>
 
           {loading ? (
             <div className="empty">Loading lead analytics...</div>
           ) : leadStatusCounts.length === 0 ? (
-            <div className="empty">No lead data available for this period.</div>
+            <div className="empty">
+              No lead data available for this period.
+            </div>
           ) : (
             leadStatusCounts.map(([status, count]) => (
               <div className="bar-row" key={status}>
@@ -740,7 +832,10 @@ export default function ReportsPage() {
                   <span>{status}</span>
                   <span>
                     {count} (
-                    {Math.round((count / filtered.leads.length) * 100)}%)
+                    {Math.round(
+                      (count / filtered.leads.length) * 100
+                    )}
+                    %)
                   </span>
                 </div>
                 <div className="bar-track">
@@ -764,13 +859,17 @@ export default function ReportsPage() {
                 Distribution of deals by current status
               </p>
             </div>
-            <span className="count-pill">{filtered.deals.length} deals</span>
+            <span className="count-pill">
+              {filtered.deals.length} deals
+            </span>
           </div>
 
           {loading ? (
             <div className="empty">Loading sales analytics...</div>
           ) : dealStatusCounts.length === 0 ? (
-            <div className="empty">No deal data available for this period.</div>
+            <div className="empty">
+              No deal data available for this period.
+            </div>
           ) : (
             dealStatusCounts.map(([status, count]) => (
               <div className="bar-row" key={status}>
@@ -778,17 +877,18 @@ export default function ReportsPage() {
                   <span>{status}</span>
                   <span>
                     {count} (
-                    {Math.round((count / filtered.deals.length) * 100)}%)
+                    {Math.round(
+                      (count / filtered.deals.length) * 100
+                    )}
+                    %)
                   </span>
                 </div>
                 <div className="bar-track">
                   <div
                     className={`bar-fill ${
-                      ["WON", "CLOSED WON", "COMPLETED", "SUCCESS"].includes(
-                        status
-                      )
+                      WON_STATUSES.includes(status)
                         ? "green"
-                        : ["LOST", "CLOSED LOST", "CANCELLED"].includes(status)
+                        : LOST_STATUSES.includes(status)
                           ? "orange"
                           : ""
                     }`}
@@ -847,16 +947,10 @@ export default function ReportsPage() {
                 <tbody>
                   {recentDeals.map((deal, index) => {
                     const status = normalizeStatus(deal.status);
-                    const statusClass = [
-                      "WON",
-                      "CLOSED WON",
-                      "COMPLETED",
-                      "SUCCESS",
-                    ].includes(status)
+
+                    const statusClass = WON_STATUSES.includes(status)
                       ? "won"
-                      : ["LOST", "CLOSED LOST", "CANCELLED", "CANCELED"].includes(
-                            status
-                          )
+                      : LOST_STATUSES.includes(status)
                         ? "lost"
                         : "open";
 
@@ -864,7 +958,10 @@ export default function ReportsPage() {
                       <tr key={String(deal.id ?? index)}>
                         <td>
                           <div className="deal-name">
-                            {getText(deal.title ?? deal.name, "Untitled Deal")}
+                            {getText(
+                              deal.title ?? deal.name,
+                              "Untitled Deal"
+                            )}
                           </div>
                           <div className="muted">
                             {getText(
@@ -928,7 +1025,9 @@ export default function ReportsPage() {
             <div className="bar-track">
               <div
                 className="bar-fill"
-                style={{ width: `${Math.min(conversionRate, 100)}%` }}
+                style={{
+                  width: `${Math.min(conversionRate, 100)}%`,
+                }}
               />
             </div>
           </div>
@@ -944,22 +1043,25 @@ export default function ReportsPage() {
             </div>
             <div className="mini-stat">
               <div className="mini-number">
-                {Math.max(filtered.tasks.length - completedTasks, 0)}
+                {Math.max(
+                  filtered.tasks.length - completedTasks,
+                  0
+                )}
               </div>
               <div className="mini-label">Remaining</div>
             </div>
           </div>
 
           <p className="footer-note">
-            Conversion here is an indicative ratio of won deals to leads in
-            the selected dataset. It is not a cohort-based conversion rate.
+            Conversion is an indicative ratio of won deals to leads
+            in the selected dataset, not a cohort-based conversion rate.
           </p>
         </article>
       </section>
 
       <p className="footer-note">
-        Reports use data returned by your SmartCRM backend. Date filters depend
-        on records having a valid creation date. Revenue includes only deals
+        Reports use data returned by your SmartCRM backend. Date filters
+        require a valid record creation date. Revenue includes deals
         whose status is recognized as won.
       </p>
     </main>
