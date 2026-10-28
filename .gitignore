@@ -72,3 +72,6 @@ npm-debug.log*
 # Editor and operating system
 .vscode/
 .DS_Store
+.neon
+*.backup
+.agents/
