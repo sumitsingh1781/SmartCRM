@@ -46,8 +46,7 @@ router.post("/register", async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Register Error:", error.message);
-
+        console.error("Register Error:", error);
         res.status(500).json({
             message: "Registration failed"
         });
